@@ -27,6 +27,6 @@ galaxies:
 
 FeodoTrackerImportAggressive: False
 MalwareBazaarImportFull: False
-SSLBlackListImportAggressive: False
+SSLBlackListImportAggressiveIPs: False
 # Feeds: full, recent, online
 UrlHausFeed: online

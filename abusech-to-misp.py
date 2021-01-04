@@ -2,6 +2,7 @@ import argparse
 import csv
 import logging
 import os
+import pdb
 import sys
 import zipfile
 from datetime import datetime
@@ -348,7 +349,7 @@ class SSLBLImporter(AbuseChImporter):
 
 
 class SSLBLIPImporter(AbuseChImporter):
-    def __init__(self, logger, config, import_agressive=False):
+    def __init__(self, logger, config, import_agressive):
         self.error = False
         self.import_agressive = import_agressive
         if import_agressive:
@@ -380,7 +381,10 @@ class SSLBLIPImporter(AbuseChImporter):
                     tags = []
                     tags.append('common-taxonomy:malware="command-and-control"')
                     tags.append('kill-chain:Command and Control')
-                    event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags)
+                    if self.import_agressive:
+                        event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags, info_cred='admirality-scale:information-credibility="3"')
+                    else:
+                        event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags)
                 self.misp_events[malware_type] = event
 
             attributes = self.mh.get_attributes(event)
@@ -459,6 +463,7 @@ class FeodoImporter(AbuseChImporter):
                     event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags,
                                                    info_cred=info_cred)
                 self.misp_events[malware_type] = event
+
             new_attribute = self.map_attribute(row)
             eventid = self.mh.get_event_id(event)
             exitsts = False
@@ -656,7 +661,7 @@ if __name__ == '__main__':
     si = SSLBLImporter(logger, config)
     if not si.error:
         si.import_data()
-    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressive'])
+    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
     if not si.error:
         si.import_data()
     ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
