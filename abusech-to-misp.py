@@ -647,17 +647,18 @@ if __name__ == '__main__':
     if 'log_level' in config:
         logger.setLevel(logging.getLevelName(config['log_level']))
 
-    bi = BazaarImporter(logger, config, full_import=False)
+    bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
     if not bi.error:
         bi.import_data()
-    fi = FeodoImporter(logger, config, import_agressive=True)
+    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
     if not fi.error:
         fi.import_data()
     si = SSLBLImporter(logger, config)
     if not si.error:
         si.import_data()
-    si = SSLBLIPImporter(logger, config, import_agressive=True)
+    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressive'])
     if not si.error:
         si.import_data()
-    ui = UrlHausImporter(logger, config, feed='full')  # Feeds: full, recent, online
-    ui.import_data()
+    ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
+    if not ui.error:
+        ui.import_data()

@@ -25,3 +25,8 @@ galaxies:
   - stealer
   - ransomware
 
+FeodoTrackerImportAggressive: False
+MalwareBazaarImportFull: False
+SSLBlackListImportAggressive: False
+# Feeds: full, recent, online
+UrlHausFeed: online
