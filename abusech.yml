@@ -1,0 +1,27 @@
+MISP_KEY: HombAFlZbRddppeuFsbPVNejyPrAuqTfzM154kTJ
+MISP_URL: https://192.168.255.189/
+MISP_VERIFYCERT: False
+MISP_ORG_NAME: FooOrg
+MISP_ORG_ID: 32
+MISP_ORG_UUID: 2a9e1b0d-5a2e-4a80-9d7e-e138b67dad27
+
+
+download_dir: /tmp/
+log_level: DEBUG
+
+tags:
+  - tlp:white
+  - admirality-scale:source-reliability="a"
+
+galaxies:
+  - banker
+  - botnet
+  - exploit-kit
+  - malpedia
+  - malware
+  - rat
+  - tool
+  - threat actor
+  - stealer
+  - ransomware
+
