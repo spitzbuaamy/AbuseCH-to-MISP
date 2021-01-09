@@ -11,7 +11,7 @@ log_level: DEBUG
 
 tags:
   - tlp:white
-  - admirality-scale:source-reliability="a"
+  - admiralty-scale:source-reliability="a"
 
 galaxies:
   - banker
@@ -26,7 +26,7 @@ galaxies:
   - ransomware
 
 FeodoTrackerImportAggressive: False
-MalwareBazaarImportFull: False
+MalwareBazaarImportFull: True
 SSLBlackListImportAggressiveIPs: False
 # Feeds: full, recent, online
-UrlHausFeed: online
+UrlHausFeed: recent

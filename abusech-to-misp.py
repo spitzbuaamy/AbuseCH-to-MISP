@@ -150,36 +150,14 @@ class MispHandler:
             return 'file-type:type="peexe"'
         elif ft == 'dll':
             return 'file-type:type="pedll"'
-        elif ft == 'zip':
-            return 'file-type:type="zip"'
         elif ft == 'apk':
             return 'file-type:type="android"'
-        elif ft == 'rar':
-            return 'file-type:type="rar"'
-        elif ft == 'xls':
-            return 'file-type:type="xls"'
-        elif ft == 'xlsx':
-            return 'file-type:type="xlsx"'
-        elif ft == 'doc':
-            return 'file-type:type="doc"'
-        elif ft == 'docx':
-            return 'file-type:type="docx"'
-        elif ft == '7z' or ft == '7zip':
-            return 'file-type:type="7zip"'
-        elif ft == 'gz' or ft == 'gzip':
-            return 'file-type:type="gzip"'
-
-        file_types = self.misp.get_taxonomy(52)['entries']
-
-        for file_type in file_types:
-            if ft == file_type['tag'].split('"')[1].strip():
-                return file_type['tag']
-
-        print("Unknown Filetype: " + ft)
+        else:
+            return 'file-type:type="' + ft + '"'
         return ''
 
     def new_misp_event(self, malware_type, feed_tag, event_info, additional_tags=[],
-                       info_cred='admirality-scale:information-credibility="2"'):
+                       info_cred='admiralty-scale:information-credibility="2"'):
         malware_tag = "malware:" + malware_type.lower()
         misp_event_obj = MISPEvent()
         misp_event_obj.info = event_info
@@ -382,7 +360,7 @@ class SSLBLIPImporter(AbuseChImporter):
                     tags.append('common-taxonomy:malware="command-and-control"')
                     tags.append('kill-chain:Command and Control')
                     if self.import_agressive:
-                        event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags, info_cred='admirality-scale:information-credibility="3"')
+                        event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags, info_cred='admiralty-scale:information-credibility="3"')
                     else:
                         event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags)
                 self.misp_events[malware_type] = event
@@ -457,9 +435,9 @@ class FeodoImporter(AbuseChImporter):
                     tags.append('common-taxonomy:malware="command-and-control"')
                     tags.append('kill-chain:Command and Control')
                     if self.import_agressive:
-                        info_cred = 'admirality-scale:information-credibility="4"'
+                        info_cred = 'admiralty-scale:information-credibility="4"'
                     else:
-                        info_cred = 'admirality-scale:information-credibility="2"'
+                        info_cred = 'admiralty-scale:information-credibility="2"'
                     event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags,
                                                    info_cred=info_cred)
                 self.misp_events[malware_type] = event
@@ -551,7 +529,7 @@ class UrlHausImporter(AbuseChImporter):
                 if event is None:
                     event_info = "UrlHaus Malware URLs: " + malware_type
                     tags = []
-                    info_cred = 'admirality-scale:information-credibility="2"'
+                    info_cred = 'admiralty-scale:information-credibility="2"'
                     event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags,
                                                    info_cred=info_cred)
                 self.misp_events[malware_type] = event
@@ -642,7 +620,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Sync AbuseCH to MISP')
     parser.add_argument('-c', '--config', required=True, help='Config File')
     parser.add_argument('-l', '--loglevel', required=False, help='Set Log Level',
-                        choices=['DEBUG', "INFO", "WARNING", "ERROR", 'CRITICAL'], default='Debug')
+                        choices=['DEBUG', "INFO", "WARNING", "ERROR", 'CRITICAL'], default='DEBUG')
 
     args = parser.parse_args()
     logger = init_logger(args.loglevel)
@@ -652,18 +630,18 @@ if __name__ == '__main__':
     if 'log_level' in config:
         logger.setLevel(logging.getLevelName(config['log_level']))
 
-    bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
-    if not bi.error:
-        bi.import_data()
-    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
-    if not fi.error:
-        fi.import_data()
-    si = SSLBLImporter(logger, config)
-    if not si.error:
-        si.import_data()
-    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
-    if not si.error:
-        si.import_data()
+    #bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
+    #if not bi.error:
+    #    bi.import_data()
+    #fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
+    #if not fi.error:
+    #    fi.import_data()
+    #si = SSLBLImporter(logger, config)
+    #if not si.error:
+    #    si.import_data()
+    #si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
+    #if not si.error:
+    #    si.import_data()
     ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
     if not ui.error:
         ui.import_data()
