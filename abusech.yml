@@ -9,6 +9,8 @@ MISP_ORG_UUID: 2a9e1b0d-5a2e-4a80-9d7e-e138b67dad27
 download_dir: /tmp/
 log_level: DEBUG
 
+max_attributes_per_event: 100 #100000
+
 tags:
   - tlp:white
   - admiralty-scale:source-reliability="a"
@@ -26,7 +28,7 @@ galaxies:
   - ransomware
 
 FeodoTrackerImportAggressive: False
-MalwareBazaarImportFull: True
+MalwareBazaarImportFull: False
 SSLBlackListImportAggressiveIPs: False
 # Feeds: full, recent, online
 UrlHausFeed: recent

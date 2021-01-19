@@ -99,7 +99,9 @@ class MispHandler:
         for event in res:
             for tag in event.tags:
                 if tag['name'].lower() == malware_tag.lower():
-                    return event
+                    #pdb.set_trace()
+                    if int(event.attribute_count) < self.config['max_attributes_per_event']:
+                        return event
         return None
 
     def _init_galaxies(self):
@@ -227,6 +229,10 @@ class BazaarImporter(AbuseChImporter):
             eventid = self.mh.get_event_id(event)
 
             self.misp.add_object(eventid, object)
+            if len(self.misp_events) > 10:
+                for malware_type in self.misp_events:
+                    self.misp.publish(self.mh.get_event_id(self.misp_events[malware_type]))
+                self.misp_events = {}
 
         for malware_type in self.misp_events:
             self.misp.publish(self.mh.get_event_id(self.misp_events[malware_type]))
@@ -548,7 +554,10 @@ class UrlHausImporter(AbuseChImporter):
             eventid = self.mh.get_event_id(event)
             attr = self.map_attribute(row)
             self.misp.add_attribute(eventid, attr)
-
+            if len(self.misp_events) > 10:
+                for malware_type in self.misp_events:
+                    self.misp.publish(self.mh.get_event_id(self.misp_events[malware_type]))
+                self.misp_events = {}
         for malware_type in self.misp_events:
             self.misp.publish(self.mh.get_event_id(self.misp_events[malware_type]))
 
@@ -630,18 +639,18 @@ if __name__ == '__main__':
     if 'log_level' in config:
         logger.setLevel(logging.getLevelName(config['log_level']))
 
-    #bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
-    #if not bi.error:
-    #    bi.import_data()
-    #fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
-    #if not fi.error:
-    #    fi.import_data()
-    #si = SSLBLImporter(logger, config)
-    #if not si.error:
-    #    si.import_data()
-    #si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
-    #if not si.error:
-    #    si.import_data()
+    bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
+    if not bi.error:
+        bi.import_data()
+    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
+    if not fi.error:
+        fi.import_data()
+    si = SSLBLImporter(logger, config)
+    if not si.error:
+        si.import_data()
+    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
+    if not si.error:
+        si.import_data()
     ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
     if not ui.error:
         ui.import_data()
