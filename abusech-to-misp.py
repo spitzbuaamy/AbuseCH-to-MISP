@@ -12,7 +12,9 @@ import urllib3
 import wget
 import magic
 import yaml
-from pymisp import ExpandedPyMISP, MISPOrganisation, MISPSighting, MISPAttribute, MISPEvent, MISPObject
+from pyfaup.faup import Faup
+from pymisp import ExpandedPyMISP, MISPOrganisation, MISPSighting, MISPAttribute, MISPEvent, MISPObject, \
+    PyMISPInvalidFormat
 
 
 class AbuseChDownloader:
@@ -588,7 +590,7 @@ class UrlHausImporter(AbuseChImporter):
         known_iocs = 0
 
         for line in csvfile:
-            if known_iocs == 10:
+            if known_iocs == -10:
                 self.logger.info("last 10 IOCs were already in the MISP. Aborting....")
                 break
             row = line.split('","')
@@ -615,7 +617,7 @@ class UrlHausImporter(AbuseChImporter):
             malware_type = malware_info['mt']
             if malware_type == '':
                 malware_type = "n/a"
-            #ft = malware_info['ft']
+            ft = malware_info['ft']
 
             if malware_type.lower() not in self.misp_events:
                 event_info = "UrlHaus Malware URLs: " + malware_type
@@ -626,9 +628,23 @@ class UrlHausImporter(AbuseChImporter):
                 self.misp_events[malware_type] = self.mh.get_event_id(event)
             malware_type = malware_type.lower()
 
-            attr = self.map_attribute(row)
-            self.misp.add_attribute(self.misp_events[malware_type], attr)
-            self.logger.info("URL added to event")
+            if self.config['save_url_as'] == 'attribute':
+                attr = self.map_attribute(row)
+                if ft is not None:
+                    attr.add_tag(ft)
+                #try:
+                #    attr.add_tag(ft)
+                #except PyMISPInvalidFormat as e:
+                #    pdb.set_trace()
+                self.misp.add_attribute(self.misp_events[malware_type], attr)
+                self.logger.info("URL added to event")
+                pdb.set_trace()
+            elif self.config['save_url_as'] == 'object':
+                self.map_object(row, self.misp_events[malware_type])
+                self.logger.info("URL Object added to event" + str(self.misp_events[malware_type]))
+            else:
+                self.logger.error("Invalid config: 'save_url_as' has to be 'attribute' or 'object'")
+                exit(1)
             new_iocs = new_iocs + 1
             known_iocs = 0
 
@@ -637,6 +653,42 @@ class UrlHausImporter(AbuseChImporter):
 
         self.logger.info(str(new_iocs) + ' IOCs imported')
         self.logger.info("Urlhaus import finished")
+
+    def map_object(self, row, evetid):
+        malware_info = self.get_malware_info(row)
+        value = row[2].strip().strip('"')
+        f = Faup()
+        f.decode(value)
+        misp_obj = MISPObject('url')
+        misp_obj.name = "url"
+
+        misp_obj.add_attributes('url', value)
+        misp_obj.add_attributes('host', f.get_host())
+        misp_obj.add_attributes('domain', f.get_domain())
+        misp_obj.add_attributes('port', f.get_port())
+        misp_obj.add_attributes('query_string', f.get_query_string())
+        misp_obj.add_attributes('resource_path', f.get_resource_path())
+        misp_obj.add_attributes('scheme', f.get_scheme())
+        misp_obj.add_attributes('subdomain', f.get_subdomain())
+        misp_obj.add_attributes('tld', f.get_tld())
+        misp_obj.add_attributes('credential', f.get_credential())
+        misp_obj.add_attributes('domain_without_tld', f.get_domain_without_tld())
+        misp_obj.add_attributes('fragment', f.get_fragment())
+        misp_obj.add_attributes('text', row[6].strip().strip('"'))
+
+        fs = datetime.strptime(row[1].strip().strip('"'), '%Y-%m-%d %H:%M:%S')
+        misp_obj.first_seen = fs
+        misp_obj.last_seen = fs
+
+        if row[4].strip().strip('"') == "malware_download":
+            misp_obj.get_attributes_by_relation('url')[0].add_tag('kill-chain:Delivery')
+        if malware_info['ft'] is not None:
+            misp_obj.get_attributes_by_relation('url')[0].add_tag(malware_info['ft'])
+        misp_obj.get_attributes_by_relation('url')[0].add_tag('urhaus_reporter:' + row[7].strip().strip('"'))
+        misp_obj.get_attributes_by_relation('text')[0].comment = 'External Analysis'
+        self.misp.add_object(evetid, misp_obj)
+
+        return
 
     def map_attribute(self, row):
         malware_info = self.get_malware_info(row)
@@ -651,6 +703,7 @@ class UrlHausImporter(AbuseChImporter):
             misp_attribute.add_tag('kill-chain:Delivery')
         if malware_info['ft'] is not None:
             misp_attribute.add_tag(malware_info['ft'])
+        misp_attribute.add_tag('urhaus_reporter:' + row[7].strip().strip('"'))
         misp_attribute.value = value
         misp_attribute.comment = row[6].strip().strip('"')
         return misp_attribute
@@ -719,15 +772,15 @@ if __name__ == '__main__':
     #bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
     #if not bi.error:
     #    bi.import_data()
-    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
-    if not fi.error:
-        fi.import_data()
+    #fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
+    #if not fi.error:
+    #    fi.import_data()
     #si = SSLBLImporter(logger, config)
     #if not si.error:
     #    si.import_data()
     #si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
     #if not si.error:
     #    si.import_data()
-    #ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
-    #if not ui.error:
-    #    ui.import_data()
+    ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
+    if not ui.error:
+        ui.import_data()
