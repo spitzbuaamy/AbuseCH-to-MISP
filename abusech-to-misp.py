@@ -240,8 +240,8 @@ class BazaarImporter(AbuseChImporter):
                 self.logger.info("IOCs already imported, contine with next line")
                 already_known_iocs = already_known_iocs + 1
                 continue
-            if malware_type in self.misp_events:
-                pass
+            if malware_type.lower() in self.misp_events:
+                malware_type = malware_type.lower()
             else:
                 self.logger.info("New malware in this feed. Create new Event")
                 event_info = "Malware Bazaar: " + malware_type
@@ -331,7 +331,7 @@ class SSLBLImporter(AbuseChImporter):
                 continue
 
 
-            if malware_type in self.misp_events:
+            if malware_type.lower() in self.misp_events:
                 malware_type = malware_type.lower()
             else:
                 event_info = "C2 SSL Certificates: " + malware_type
@@ -389,7 +389,7 @@ class SSLBLIPImporter(AbuseChImporter):
         readCSV = csv.reader(csvfile, delimiter=',')
         malware_type = 'n/a'
 
-        if malware_type not in self.misp_events:
+        if malware_type.lower() not in self.misp_events:
             event_info = "C2 IPs identified by SSL Certificates"
             tags = []
             tags.append('common-taxonomy:malware="command-and-control"')
@@ -399,6 +399,7 @@ class SSLBLIPImporter(AbuseChImporter):
                                                info_cred='admiralty-scale:information-credibility="3"')
             else:
                 event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags)
+                malware_type = malware_type.lower()
             self.misp_events[malware_type] = self.mh.get_event_id(event)
 
         known_iocs = 0
@@ -484,6 +485,7 @@ class FeodoImporter(AbuseChImporter):
                 malware_type = row[self.type_index].strip().strip('"')
             except IndexError as e:
                 self.logger.error(e)
+
             if malware_type.lower() in self.misp_events:
                 malware_type = malware_type.lower()
             else:
@@ -498,6 +500,7 @@ class FeodoImporter(AbuseChImporter):
                     info_cred = 'admiralty-scale:information-credibility="2"'
                 event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags,
                                                info_cred=info_cred)
+                malware_type = malware_type.lower()
                 self.misp_events[malware_type] = self.mh.get_event_id(event)
 
             new_attribute = self.map_attribute(row)
@@ -593,7 +596,7 @@ class UrlHausImporter(AbuseChImporter):
                 self.logger.info("No IOC line, continue with next line")
                 continue
 
-            res = self.misp.search(controller='attributes', value=row[2].strip().strip('"'), pythonify=True)
+            res = self.misp.search(controller='attributes', value=row[2].strip().strip('"'), pythonify=True, tags=[self.feed_tag])
             if len(res) > 0:
                 if self.feed == 'online':
                     attribute = res[0]
@@ -614,13 +617,14 @@ class UrlHausImporter(AbuseChImporter):
                 malware_type = "n/a"
             #ft = malware_info['ft']
 
-            if malware_type not in self.misp_events:
+            if malware_type.lower() not in self.misp_events:
                 event_info = "UrlHaus Malware URLs: " + malware_type
                 tags = []
                 info_cred = 'admiralty-scale:information-credibility="2"'
                 event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags, info_cred=info_cred)
+                malware_type = malware_type.lower()
                 self.misp_events[malware_type] = self.mh.get_event_id(event)
-
+            malware_type = malware_type.lower()
 
             attr = self.map_attribute(row)
             self.misp.add_attribute(self.misp_events[malware_type], attr)
@@ -629,7 +633,7 @@ class UrlHausImporter(AbuseChImporter):
             known_iocs = 0
 
         for malware_type in self.misp_events:
-            self.misp.publish(self.mh.get_event_id(self.misp_events[malware_type]))
+            self.misp.publish(self.misp_events[malware_type])
 
         self.logger.info(str(new_iocs) + ' IOCs imported')
         self.logger.info("Urlhaus import finished")
@@ -712,18 +716,18 @@ if __name__ == '__main__':
     if 'log_level' in config:
         logger.setLevel(logging.getLevelName(config['log_level']))
 
-    bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
-    if not bi.error:
-        bi.import_data()
+    #bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
+    #if not bi.error:
+    #    bi.import_data()
     fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
     if not fi.error:
         fi.import_data()
-    si = SSLBLImporter(logger, config)
-    if not si.error:
-        si.import_data()
-    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
-    if not si.error:
-        si.import_data()
-    ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
-    if not ui.error:
-        ui.import_data()
+    #si = SSLBLImporter(logger, config)
+    #if not si.error:
+    #    si.import_data()
+    #si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
+    #if not si.error:
+    #    si.import_data()
+    #ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
+    #if not ui.error:
+    #    ui.import_data()
