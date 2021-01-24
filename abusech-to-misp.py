@@ -632,13 +632,8 @@ class UrlHausImporter(AbuseChImporter):
                 attr = self.map_attribute(row)
                 if ft is not None:
                     attr.add_tag(ft)
-                #try:
-                #    attr.add_tag(ft)
-                #except PyMISPInvalidFormat as e:
-                #    pdb.set_trace()
                 self.misp.add_attribute(self.misp_events[malware_type], attr)
                 self.logger.info("URL added to event")
-                pdb.set_trace()
             elif self.config['save_url_as'] == 'object':
                 self.map_object(row, self.misp_events[malware_type])
                 self.logger.info("URL Object added to event" + str(self.misp_events[malware_type]))
