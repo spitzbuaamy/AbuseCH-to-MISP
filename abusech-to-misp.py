@@ -8,6 +8,7 @@ import zipfile
 from datetime import datetime
 
 import pytz
+import requests
 import urllib3
 import wget
 import magic
@@ -18,15 +19,22 @@ from pymisp import ExpandedPyMISP, MISPOrganisation, MISPSighting, MISPAttribute
 
 
 class AbuseChDownloader:
-    def __init__(self, logger, download_dir):
+    def __init__(self, logger, download_dir, proxy):
         self.logger = logger
         self.download_dir = download_dir
+        self.proxy = proxy
 
     def download_feed(self, url):
         out = self.get_output_file()
         self.logger.info("Download " + url)
         try:
-            wget.download(url, out=out)
+            if self.proxy is None:
+                wget.download(url, out=out)
+            else:
+                r = requests.get(url, stream=True, proxies={'http' : self.proxy})
+                with open(out, 'wb') as f:
+                    for chunk in r:
+                        f.write(chunk)
         except Exception as e:
             self.logger.error("Error while Downloading " + url)
             self.logger.error(e)

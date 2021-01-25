@@ -5,6 +5,7 @@ MISP_ORG_NAME: FooOrg
 MISP_ORG_ID: 32
 MISP_ORG_UUID: 2a9e1b0d-5a2e-4a80-9d7e-e138b67dad27
 
+PROXY: None
 
 download_dir: /tmp/
 log_level: DEBUG

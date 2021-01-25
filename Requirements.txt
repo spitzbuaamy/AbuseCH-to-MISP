@@ -6,3 +6,4 @@ PyYaml
 python-magic
 lief
 pyfaup
+requests
