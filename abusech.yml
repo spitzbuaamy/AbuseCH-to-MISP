@@ -35,4 +35,4 @@ SSLBlackListImportAggressiveIPs: False
 # Feeds: full, recent, online
 UrlHausFeed: recent
 # save url as attribute or object
-save_url_as: attribute
+save_url_as: object

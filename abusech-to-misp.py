@@ -13,7 +13,7 @@ import urllib3
 import wget
 import magic
 import yaml
-from pyfaup.faup import Faup
+#from pyfaup.faup import Faup
 from pymisp import ExpandedPyMISP, MISPOrganisation, MISPSighting, MISPAttribute, MISPEvent, MISPObject, \
     PyMISPInvalidFormat
 
@@ -22,8 +22,14 @@ class AbuseChDownloader:
     def __init__(self, logger, download_dir, config):
         self.logger = logger
         self.download_dir = download_dir
-        self.http_proxy = config['HTTP_PROXY']
-        self.https_proxy = config['HTTPS_PROXY']
+        if config['HTTP_PROXY'] == 'None':
+            self.http_proxy = None
+        else:
+            self.http_proxy = config['HTTP_PROXY']
+        if config['HTTPS_PROXY'] == 'None':
+            self.https_proxy = None
+        else:
+            self.https_proxy = config['HTTPS_PROXY']
 
     def download_feed(self, url):
         out = self.get_output_file()
@@ -502,6 +508,7 @@ class FeodoImporter(AbuseChImporter):
             else:
                 self.logger.info("New Malware in this Feed, create new event")
                 event_info = "Feodo Tracker: " + malware_type
+                malware_type = malware_type.lower()
                 tags = []
                 tags.append('common-taxonomy:malware="command-and-control"')
                 tags.append('kill-chain:Command and Control')
@@ -511,7 +518,7 @@ class FeodoImporter(AbuseChImporter):
                     info_cred = 'admiralty-scale:information-credibility="2"'
                 event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags,
                                                info_cred=info_cred)
-                malware_type = malware_type.lower()
+
                 self.misp_events[malware_type] = self.mh.get_event_id(event)
 
             new_attribute = self.map_attribute(row)
@@ -776,15 +783,15 @@ if __name__ == '__main__':
     #bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
     #if not bi.error:
     #    bi.import_data()
-    #fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
-    #if not fi.error:
-    #    fi.import_data()
+    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
+    if not fi.error:
+        fi.import_data()
     #si = SSLBLImporter(logger, config)
     #if not si.error:
     #    si.import_data()
     #si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
     #if not si.error:
     #    si.import_data()
-    ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
-    if not ui.error:
-        ui.import_data()
+    #ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
+    #if not ui.error:
+    #    ui.import_data()
