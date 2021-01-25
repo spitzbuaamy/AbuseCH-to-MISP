@@ -19,19 +19,20 @@ from pymisp import ExpandedPyMISP, MISPOrganisation, MISPSighting, MISPAttribute
 
 
 class AbuseChDownloader:
-    def __init__(self, logger, download_dir, proxy):
+    def __init__(self, logger, download_dir, config):
         self.logger = logger
         self.download_dir = download_dir
-        self.proxy = proxy
+        self.http_proxy = config['HTTP_PROXY']
+        self.https_proxy = config['HTTPS_PROXY']
 
     def download_feed(self, url):
         out = self.get_output_file()
         self.logger.info("Download " + url)
         try:
-            if self.proxy is None:
+            if self.http_proxy is None and self.https_proxy is None:
                 wget.download(url, out=out)
             else:
-                r = requests.get(url, stream=True, proxies={'http' : self.proxy})
+                r = requests.get(url, stream=True, proxies={'http': self.http_proxy, 'https': self.https_proxy})
                 with open(out, 'wb') as f:
                     for chunk in r:
                         f.write(chunk)
@@ -209,7 +210,7 @@ class AbuseChImporter:
         self.misp = self.mh.misp
         self.logger = logger
         download_dir = config['download_dir']
-        self.dl = AbuseChDownloader(logger, download_dir, self.config['PROXY'])
+        self.dl = AbuseChDownloader(logger, download_dir, self.config)
         self.infile = None
 
 
