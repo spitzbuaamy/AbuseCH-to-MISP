@@ -1,5 +1,8 @@
+wheel
 pymisp
 wget
 pytz
 PyYaml
 python-magic
+lief
+pyfaup
