@@ -6,6 +6,7 @@ import pdb
 import sys
 import zipfile
 from datetime import datetime
+from time import sleep
 
 import pytz
 import requests
@@ -91,6 +92,36 @@ class MispHandler:
         self.galaxy_tags = {}
         self._init_galaxies()
 
+    def add_object(self, evetid, misp_obj):
+        try:
+            self.misp.add_object(evetid, misp_obj)
+        except Exception as e:
+            self.logger.error("Error while adding an object. Wait a second and try again")
+            sleep(1)
+            try:
+                self.misp.add_attribute(evetid, misp_obj)
+            except Exception as e:
+                self.logger.error("Second error for the object:")
+                self.logger.error("Object: " + str(misp_obj))
+                self.logger.error('Eventid:' + str(evetid))
+                self.logger.error(e)
+                self.logger.error("Ignoring this object")
+
+    def add_attribute(self, evetid, attr):
+        try:
+            self.misp.add_attribute(evetid, attr)
+        except Exception as e:
+            self.logger.error("Error while adding an attribute. Wait a second and try again")
+            sleep(1)
+            try:
+                self.misp.add_attribute(evetid, attr)
+            except Exception as e:
+                self.logger.error("Second error for the attribute:")
+                self.logger.error("Attribute: " + str(attr))
+                self.logger.error('Eventid:' + str(evetid))
+                self.logger.error(e)
+                self.logger.error("Ignoring this attribute")
+
     def get_event_id(self, event):
         try:
             return event['Event']['id']
@@ -117,7 +148,7 @@ class MispHandler:
         for event in res:
             for tag in event.tags:
                 if tag['name'].startswith("malware:"):
-                    malware = tag['name'].split(':')[1]
+                    malware = tag['name'].split(':')[1].lower()
                     erg[malware] = event.id
                     break
         return erg
@@ -264,7 +295,7 @@ class BazaarImporter(AbuseChImporter):
                 event_info = "Malware Bazaar: " + malware_type
                 event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info)
                 self.misp_events[malware_type] = self.mh.get_event_id(event)
-            self.misp.add_object(self.misp_events[malware_type], object)
+            self.mh.add_object(self.misp_events[malware_type], object)
             self.logger.info("New Object added to Event")
             new_iocs = new_iocs + 1
             already_known_iocs = 0
@@ -359,7 +390,7 @@ class SSLBLImporter(AbuseChImporter):
                 self.misp_events[malware_type] = self.mh.get_event_id(event)
 
             new_attribute = self.map_attribute(row)
-            self.misp.add_attribute(self.misp_events[malware_type], new_attribute)
+            self.mh.add_attribute(self.misp_events[malware_type], new_attribute)
             new_icos = new_icos + 1
             existing_iocs = 0
             self.logger.info("New IOC added to MISP")
@@ -437,7 +468,7 @@ class SSLBLIPImporter(AbuseChImporter):
                 known_iocs = known_iocs + 1
                 continue
 
-            self.misp.add_attribute(self.misp_events[malware_type], new_attribute)
+            self.mh.add_attribute(self.misp_events[malware_type], new_attribute)
             self.logger.info("New IOC added")
             known_iocs = 0
             new_iocs = new_iocs + 1
@@ -544,7 +575,7 @@ class FeodoImporter(AbuseChImporter):
                     self.logger.info("last seen value not in feed for existing IOC:" + new_attribute.value)
                     not_updated_iocs = not_updated_iocs + 1
             else:
-                self.misp.add_attribute(self.misp_events[malware_type], new_attribute)
+                self.mh.add_attribute(self.misp_events[malware_type], new_attribute)
                 self.logger.info("New attriubte added")
                 new_iocs = new_iocs + 1
 
@@ -648,7 +679,7 @@ class UrlHausImporter(AbuseChImporter):
                 attr = self.map_attribute(row)
                 if ft is not None:
                     attr.add_tag(ft)
-                self.misp.add_attribute(self.misp_events[malware_type], attr)
+                self.mh.add_attribute(self.misp_events[malware_type], attr)
                 self.logger.info("URL added to event")
             elif self.config['save_url_as'] == 'object':
                 self.map_object(row, self.misp_events[malware_type])
@@ -697,7 +728,7 @@ class UrlHausImporter(AbuseChImporter):
             misp_obj.get_attributes_by_relation('url')[0].add_tag(malware_info['ft'])
         misp_obj.get_attributes_by_relation('url')[0].add_tag('urhaus_reporter:' + row[7].strip().strip('"'))
         misp_obj.get_attributes_by_relation('text')[0].comment = 'External Analysis'
-        self.misp.add_object(evetid, misp_obj)
+        self.mh.add_object(evetid, misp_obj)
 
         return
 
@@ -780,12 +811,12 @@ if __name__ == '__main__':
     if 'log_level' in config:
         logger.setLevel(logging.getLevelName(config['log_level']))
 
-    #bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
-    #if not bi.error:
-    #    bi.import_data()
-    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
-    if not fi.error:
-        fi.import_data()
+    bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
+    if not bi.error:
+        bi.import_data()
+    #fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
+    #if not fi.error:
+    #    fi.import_data()
     #si = SSLBLImporter(logger, config)
     #if not si.error:
     #    si.import_data()
