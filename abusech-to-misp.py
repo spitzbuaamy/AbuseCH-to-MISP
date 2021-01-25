@@ -14,7 +14,7 @@ import urllib3
 import wget
 import magic
 import yaml
-#from pyfaup.faup import Faup
+from pyfaup.faup import Faup
 from pymisp import ExpandedPyMISP, MISPOrganisation, MISPSighting, MISPAttribute, MISPEvent, MISPObject, \
     PyMISPInvalidFormat
 
@@ -814,15 +814,15 @@ if __name__ == '__main__':
     bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
     if not bi.error:
         bi.import_data()
-    #fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
-    #if not fi.error:
-    #    fi.import_data()
-    #si = SSLBLImporter(logger, config)
-    #if not si.error:
-    #    si.import_data()
-    #si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
-    #if not si.error:
-    #    si.import_data()
-    #ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
-    #if not ui.error:
-    #    ui.import_data()
+    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
+    if not fi.error:
+        fi.import_data()
+    si = SSLBLImporter(logger, config)
+    if not si.error:
+        si.import_data()
+    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
+    if not si.error:
+        si.import_data()
+    ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
+    if not ui.error:
+        ui.import_data()
