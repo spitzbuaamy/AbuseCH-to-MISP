@@ -209,7 +209,7 @@ class AbuseChImporter:
         self.misp = self.mh.misp
         self.logger = logger
         download_dir = config['download_dir']
-        self.dl = AbuseChDownloader(logger, download_dir, self.config['Proxy'])
+        self.dl = AbuseChDownloader(logger, download_dir, self.config['PROXY'])
         self.infile = None
 
 
