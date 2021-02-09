@@ -14,7 +14,7 @@ import urllib3
 import wget
 import magic
 import yaml
-#from pyfaup.faup import Faup
+from pyfaup.faup import Faup
 from pymisp import ExpandedPyMISP, MISPOrganisation, MISPSighting, MISPAttribute, MISPEvent, MISPObject, \
     PyMISPInvalidFormat
 
@@ -515,15 +515,15 @@ class FeodoImporter(AbuseChImporter):
             self.logger.info("Import Feodotracker")
         super(FeodoImporter, self).__init__(logger, config)
         self.infile = self.dl.download_feed(url)
+
+        self.type_index = 5
         if self.infile is None:
             self.logger.error("Download Error")
             self.error = True
         if self.import_agressive:
             self.feed_tag = 'feed:abusech="Feodo-tracker-agressive"'
-            self.type_index = 3
         else:
             self.feed_tag = 'feed:abusech="Feodo-tracker"'
-            self.type_index = 4
         self.misp_events = self.mh.get_feed_events(self.feed_tag)
 
     def import_data(self):
@@ -537,9 +537,10 @@ class FeodoImporter(AbuseChImporter):
         readCSV = csv.reader(csvfile, delimiter=',')
         for row in readCSV:
             malware_type = ''
-            if row[0].startswith("#") or len(row) < self.type_index:
+            if row[0].startswith("#") or len(row) < self.type_index or row[0].startswith('first'):
                 self.logger.info("No IOC line, continue with next line")
                 continue
+
             try:
                 malware_type = row[self.type_index].strip().strip('"').lower()
             except IndexError as e:
@@ -569,13 +570,14 @@ class FeodoImporter(AbuseChImporter):
                                    tags=[self.feed_tag], pythonify=True)
             if len(res) > 0:
                 attribute = res[0]
-                ls_string = row[3].strip().strip('"')
+                ls_string = row[4].strip().strip('"')
+
                 if ls_string != '' and hasattr(attribute, 'last_seen'):
                     ls = datetime.strptime(ls_string, '%Y-%m-%d')
                     ls = ls.replace(tzinfo=pytz.UTC)
+                    attribute.last_seen = ls
 
-                    if ls > attribute.last_seen:
-                        attribute.last_seen = ls
+                    if row[3] == 'online':
                         self.mh.add_sigthing(attribute.id)
                         self.misp.update_attribute(attribute, attribute.id)
                         self.logger.info("Attribute updated and sighting added")
@@ -607,7 +609,7 @@ class FeodoImporter(AbuseChImporter):
         fs = datetime.strptime(row[0].strip().strip('"'), '%Y-%m-%d %H:%M:%S')
         misp_attribute.first_seen = fs
         try:
-            ls_string = row[3].strip().strip('"')
+            ls_string = row[4].strip().strip('"')
             if ls_string != '':
                 ls = datetime.strptime(ls_string, '%Y-%m-%d')
 
@@ -705,8 +707,10 @@ class UrlHausImporter(AbuseChImporter):
                     self.logger.info(
                         "Max numbers of IOCs per Event reached. Publish Event and create a new Event for further IOCs")
                     self.misp.publish(self.misp_events[malware_type])
+                    self.logger.info("URL Object added to event " + str(self.misp_events[malware_type]))
                     del self.misp_events[malware_type]
-                self.logger.info("URL Object added to event" + str(self.misp_events[malware_type]))
+                else:
+                    self.logger.info("URL Object added to event " + str(self.misp_events[malware_type]))
             else:
                 self.logger.error("Invalid config: 'save_url_as' has to be 'attribute' or 'object'")
                 exit(1)
@@ -827,24 +831,25 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     logger = init_logger(args.loglevel)
-
+    pymisplogger = logging.getLogger('pymisp')
+    pymisplogger.setLevel('ERROR')
     config = load_config(args.config, logger)
 
     if 'log_level' in config:
         logger.setLevel(logging.getLevelName(config['log_level']))
 
-    #bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
-    #if not bi.error:
-    #    bi.import_data()
-    #fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
-    #if not fi.error:
-    #    fi.import_data()
-    #si = SSLBLImporter(logger, config)
-    #if not si.error:
-    #    si.import_data()
-    #si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
-    #if not si.error:
-    #    si.import_data()
+    bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
+    if not bi.error:
+        bi.import_data()
+    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
+    if not fi.error:
+        fi.import_data()
+    si = SSLBLImporter(logger, config)
+    if not si.error:
+        si.import_data()
+    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
+    if not si.error:
+        si.import_data()
     ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
     if not ui.error:
         ui.import_data()
