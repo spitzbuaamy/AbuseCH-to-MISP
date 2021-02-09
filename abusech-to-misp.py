@@ -575,7 +575,8 @@ class FeodoImporter(AbuseChImporter):
                 if ls_string != '' and hasattr(attribute, 'last_seen'):
                     ls = datetime.strptime(ls_string, '%Y-%m-%d')
                     ls = ls.replace(tzinfo=pytz.UTC)
-                    attribute.last_seen = ls
+                    if ls > attribute.last_seen:
+                        attribute.last_seen = ls
 
                     if row[3] == 'online':
                         self.mh.add_sigthing(attribute.id)
@@ -671,7 +672,7 @@ class UrlHausImporter(AbuseChImporter):
                     self.mh.add_sigthing(attribute.id)
                     attribute.last_seen = datetime.now()
                     self.misp.update_attribute(attribute, attribute.id)
-                    self.logger.info("Sighting added" + datetime.now().strftime("%H:%M:%S"))
+                    self.logger.info("Sighting added " + datetime.now().strftime("%H:%M:%S"))
                     updated_iocs = updated_iocs + 1
                 else:
                     known_iocs = known_iocs + 1
@@ -734,6 +735,7 @@ class UrlHausImporter(AbuseChImporter):
         misp_obj.add_attributes('url', value)
         misp_obj.add_attributes('host', f.get_host())
         misp_obj.add_attributes('domain', f.get_domain())
+        self.logger.info(f.get_domain())
         misp_obj.add_attributes('port', f.get_port())
         misp_obj.add_attributes('query_string', f.get_query_string())
         misp_obj.add_attributes('resource_path', f.get_resource_path())
