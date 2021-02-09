@@ -11,10 +11,11 @@ HTTPS_PROXY: None
 download_dir: /tmp/
 log_level: DEBUG
 
-max_attributes_per_event: 100000
+max_attributes_per_event: 200
 
 tags:
-  - tlp:white
+  - tlp:green
+  - pap:green
   - admiralty-scale:source-reliability="a"
 
 galaxies:
