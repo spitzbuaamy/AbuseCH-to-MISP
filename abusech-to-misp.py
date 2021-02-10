@@ -3,6 +3,7 @@ import csv
 import logging
 import os
 import pdb
+import re
 import sys
 import zipfile
 from datetime import datetime
@@ -546,6 +547,9 @@ class FeodoImporter(AbuseChImporter):
             if row[0].startswith("#") or len(row) < self.type_index or row[0].startswith('first'):
                 self.logger.info("No IOC line, continue with next line")
                 continue
+            if row[3] == 'offline':
+                not_updated_iocs = not_updated_iocs + 1
+                continue
 
             try:
                 malware_type = row[self.type_index].strip().strip('"').lower()
@@ -652,6 +656,7 @@ class UrlHausImporter(AbuseChImporter):
             self.logger.error("Download Error")
             self.error = True
         self.misp_events = self.mh.get_feed_events(self.feed_tag)
+        self.IPRE = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
 
     def import_data(self):
         self.logger.info("Start import of file with " + str(sum(1 for line in open(self.infile))) + ' lines.')
@@ -739,9 +744,12 @@ class UrlHausImporter(AbuseChImporter):
         misp_obj.name = "url"
 
         misp_obj.add_attributes('url', value)
-        misp_obj.add_attributes('host', f.get_host())
-        misp_obj.add_attributes('domain', f.get_domain())
-        self.logger.info(f.get_domain())
+        if re.search(self.IPRE, f.get_domain()):
+            misp_obj.add_attributes('ip', f.get_domain())
+        else:
+            misp_obj.add_attributes('host', f.get_host())
+            misp_obj.add_attributes('domain', f.get_domain())
+            misp_obj.add_attributes('domain_without_tld', f.get_domain_without_tld())
         misp_obj.add_attributes('port', f.get_port())
         misp_obj.add_attributes('query_string', f.get_query_string())
         misp_obj.add_attributes('resource_path', f.get_resource_path())
@@ -749,7 +757,7 @@ class UrlHausImporter(AbuseChImporter):
         misp_obj.add_attributes('subdomain', f.get_subdomain())
         misp_obj.add_attributes('tld', f.get_tld())
         misp_obj.add_attributes('credential', f.get_credential())
-        misp_obj.add_attributes('domain_without_tld', f.get_domain_without_tld())
+
         misp_obj.add_attributes('fragment', f.get_fragment())
         misp_obj.add_attributes('text', row[6].strip().strip('"'))
 
@@ -763,6 +771,11 @@ class UrlHausImporter(AbuseChImporter):
             misp_obj.get_attributes_by_relation('url')[0].add_tag(malware_info['ft'])
         misp_obj.get_attributes_by_relation('url')[0].add_tag('urhaus_reporter:' + row[7].strip().strip('"'))
         misp_obj.get_attributes_by_relation('text')[0].comment = 'External Analysis'
+        for relation in ['ip', 'host', 'domain']:
+            try:
+                misp_obj.get_attributes_by_relation(relation)[0].to_ids = False
+            except:
+                continue
 
         return self.mh.add_object(evetid, misp_obj)
 

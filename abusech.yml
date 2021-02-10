@@ -11,7 +11,7 @@ HTTPS_PROXY: None
 download_dir: /tmp/
 log_level: DEBUG
 
-max_attributes_per_event: 200
+max_attributes_per_event: 20000
 
 tags:
   - tlp:green
@@ -34,6 +34,7 @@ FeodoTrackerImportAggressive: False
 MalwareBazaarImportFull: False
 SSLBlackListImportAggressiveIPs: False
 # Feeds: full, recent, online
-UrlHausFeed: recent
+UrlHausFeed: online
 # save url as attribute or object
 save_url_as: object
+
