@@ -541,6 +541,9 @@ class FeodoImporter(AbuseChImporter):
             if row[0].startswith("#") or len(row) < self.type_index or row[0].startswith('first'):
                 self.logger.info("No IOC line, continue with next line")
                 continue
+            if row[3] == 'offline':
+                not_updated_iocs = not_updated_iocs + 1
+                continue
 
             try:
                 malware_type = row[self.type_index].strip().strip('"').lower()
