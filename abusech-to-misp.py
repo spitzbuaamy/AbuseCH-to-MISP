@@ -225,6 +225,9 @@ class MispHandler:
         for tag in additional_tags:
             misp_event_obj.add_tag(tag)
         misp_event_obj.orgc = self.orgc
+        misp_event_obj.analysis = 1 #ongoing
+        misp_event_obj.threat_level_id = 4 #undefined
+        misp_event_obj.sharing_group_id = 3 #all communties
 
         galaxies = self.get_galaxies(malware_tag)
         for galaxy in galaxies:
@@ -295,6 +298,9 @@ class BazaarImporter(AbuseChImporter):
 
             if self.mh.add_object(self.misp_events[malware_type], object):
                 self.logger.info("Max numbers of IOCs per Event reached. Publish Event and create a new Event for further IOCs")
+                event = self.misp.get_event(self.misp_events[malware_type])
+                event.analysis = 2
+                self.misp.update_event(event, self.misp_events[malware_type])
                 self.misp.publish(self.misp_events[malware_type])
                 del self.misp_events[malware_type]
 
