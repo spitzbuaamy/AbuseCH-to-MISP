@@ -844,7 +844,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     logger = init_logger(args.loglevel)
     pymisplogger = logging.getLogger('pymisp')
-    pymisplogger.setLevel(args.loglevel)
+    pymisplogger.setLevel('ERROR')
     config = load_config(args.config, logger)
 
     if 'log_level' in config:
