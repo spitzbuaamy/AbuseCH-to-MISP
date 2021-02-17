@@ -687,7 +687,7 @@ class UrlHausImporter(AbuseChImporter):
 
         for line in csvfile:
 
-            if known_iocs == -10:
+            if known_iocs == 10:
                 self.logger.info("last 10 IOCs were already in the MISP. Aborting....")
                 break
             row = line.split('","')
@@ -890,21 +890,21 @@ if __name__ == '__main__':
     pymisplogger.setLevel('ERROR')
     config = load_config(args.config, logger)
 
-    #if 'log_level' in config:
-    #    logger.setLevel(logging.getLevelName(config['log_level']))
+    if 'log_level' in config:
+        logger.setLevel(logging.getLevelName(config['log_level']))
 
-    #bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
-    #if not bi.error:
-    #    bi.import_data()
-    #fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
-    #if not fi.error:
-    #    fi.import_data()
-    #si = SSLBLImporter(logger, config)
-    #if not si.error:
-    #    si.import_data()
-    #si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
-    #if not si.error:
-    #    si.import_data()
+    bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
+    if not bi.error:
+        bi.import_data()
+    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
+    if not fi.error:
+        fi.import_data()
+    si = SSLBLImporter(logger, config)
+    if not si.error:
+        si.import_data()
+    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
+    if not si.error:
+        si.import_data()
     ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
     if not ui.error:
         ui.import_data()
