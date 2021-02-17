@@ -34,7 +34,7 @@ FeodoTrackerImportAggressive: False
 MalwareBazaarImportFull: False
 SSLBlackListImportAggressiveIPs: False
 # Feeds: full, recent, online
-UrlHausFeed: online
+UrlHausFeed: recent
 # save url as attribute or object
 save_url_as: object
 

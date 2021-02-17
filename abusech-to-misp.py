@@ -1,5 +1,6 @@
 import argparse
 import csv
+import hashlib
 import logging
 import os
 import pdb
@@ -127,11 +128,11 @@ class MispHandler:
 
     def get_event_id(self, event):
         try:
-            return event['Event']['id']
+            return event['Event']['uuid']
         except KeyError:
-            return event.id
+            return event.uuid
         except TypeError:
-            return event.id
+            return event.uuid
 
     def get_attributes(self, event):
         try:
@@ -154,7 +155,7 @@ class MispHandler:
             for tag in event.tags:
                 if tag['name'].startswith("malware:"):
                     malware = tag['name'].split(':')[1]
-                    erg[malware] = event.id
+                    erg[malware] = event.uuid
                     break
         return erg
 
@@ -225,6 +226,7 @@ class MispHandler:
             misp_event_obj.add_tag(tag)
         for tag in additional_tags:
             misp_event_obj.add_tag(tag)
+
         misp_event_obj.orgc = self.orgc
         misp_event_obj.analysis = 1 #ongoing
         misp_event_obj.threat_level_id = 4 #undefined
@@ -233,9 +235,16 @@ class MispHandler:
         galaxies = self.get_galaxies(malware_tag)
         for galaxy in galaxies:
             misp_event_obj.add_tag(galaxy)
-        misp_event = self.misp.add_event(misp_event_obj)
+        misp_event = self.misp.add_event(misp_event_obj, pythonify=True)
         self.logger.info("New Event for Malware " + malware_type + " created")
+        if 'urlhaus' in feed_tag.lower():
+            self.misp.tag(misp_event.uuid ,self.get_search_tag(malware_tag, feed_tag), local=True)
         return misp_event
+
+    def get_search_tag(self, malware_tag, feed_tag):
+        str2hash = malware_tag + feed_tag
+        result = hashlib.md5(str2hash.encode())
+        return result.hexdigest()
 
 
 class AbuseChImporter:
@@ -274,7 +283,7 @@ class BazaarImporter(AbuseChImporter):
         already_known_iocs = 0
 
         for line in csvfile:
-            if already_known_iocs == 10:
+            if already_known_iocs == 100000:
                 self.logger.info("last 10 IOCs already were already in your MISP. Aborting...")
                 break
             row = line.split('", "')
@@ -300,6 +309,7 @@ class BazaarImporter(AbuseChImporter):
             if self.mh.add_object(self.misp_events[malware_type], object):
                 self.logger.info("Max numbers of IOCs per Event reached. Publish Event and create a new Event for further IOCs")
                 event = self.misp.get_event(self.misp_events[malware_type])
+                pdb.set_trace()
                 event.analysis = 2
                 self.misp.update_event(event, self.misp_events[malware_type])
                 self.misp.publish(self.misp_events[malware_type])
@@ -313,6 +323,7 @@ class BazaarImporter(AbuseChImporter):
         for malware_type in self.misp_events:
             self.misp.publish(self.misp_events[malware_type])
         self.logger.info("Bazaarimport finished - " + str(new_iocs) + "new objects imported")
+        os.remove(self.infile)
 
     def map_object(self, row):
         misp_object = MISPObject("file")
@@ -331,8 +342,12 @@ class BazaarImporter(AbuseChImporter):
         misp_object.add_attribute("md5", value=row[2].strip().strip('"'), type="md5")
         misp_object.add_attribute("sha256", value=sha256, type="sha256")
         misp_object.add_attribute("filename", value=row[5].strip().strip('"'), type='filename')
-        misp_object.add_attribute("ssdeep", value=row[12].strip().strip('"'), type='ssdeep')
-        misp_object.add_attribute("tlsh", value=row[13].strip().strip('"'), type='tlsh')
+        ssdeep = row[12].strip().strip('"')
+        if ssdeep != 'n/a':
+            misp_object.add_attribute("ssdeep", value=ssdeep, type='ssdeep')
+        tlsh = row[13].strip().strip('"')
+        if tlsh != 'n/a':
+            misp_object.add_attribute("tlsh", value=tlsh, type='tlsh')
         mime_type = "Mime-Type: " + row[7].strip().strip('"')
         misp_object.add_attribute("mimetype", value=mime_type, type='mime-type')
         misp_object.add_attribute("link", value=link, type='link')
@@ -415,6 +430,7 @@ class SSLBLImporter(AbuseChImporter):
 
         self.logger.info("SSL Certificate Importer finished")
         self.logger.info(str(new_icos) + ' ')
+        os.remove(self.infile)
 
     def map_attribute(self, row):
         misp_attribute = MISPAttribute()
@@ -496,6 +512,7 @@ class SSLBLIPImporter(AbuseChImporter):
 
         self.logger.info(str(new_iocs) + " IOCs imported")
         self.logger.info("SSL Blacklist IP importer finished")
+        os.remove(self.infile)
 
     def map_attribute(self, row):
         misp_attribute = MISPAttribute()
@@ -614,6 +631,7 @@ class FeodoImporter(AbuseChImporter):
         self.logger.info(str(not_updated_iocs) + ' IOCs were already up to date')
         self.logger.info(str(updated_iocs) + ' IOCs updated')
         self.logger.info("FeodoTracker import finished")
+        os.remove(self.infile)
 
     def map_attribute(self, row):
         misp_attribute = MISPAttribute()
@@ -655,7 +673,7 @@ class UrlHausImporter(AbuseChImporter):
         if self.infile is None:
             self.logger.error("Download Error")
             self.error = True
-        self.misp_events = self.mh.get_feed_events(self.feed_tag)
+        self.misp_events = {}#self.mh.get_feed_events(self.feed_tag)
         self.IPRE = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
 
     def import_data(self):
@@ -665,8 +683,10 @@ class UrlHausImporter(AbuseChImporter):
         new_iocs = 0
         updated_iocs = 0
         known_iocs = 0
+        i = 0
 
         for line in csvfile:
+
             if known_iocs == -10:
                 self.logger.info("last 10 IOCs were already in the MISP. Aborting....")
                 break
@@ -674,7 +694,9 @@ class UrlHausImporter(AbuseChImporter):
             if row[0].startswith("#"):
                 self.logger.info("No IOC line, continue with next line")
                 continue
-
+            i = i +1
+            if i % 100 == 0:
+                print(str(i) + " IOCs processed")
             res = self.misp.search(controller='attributes', value=row[2].strip().strip('"'), pythonify=True, tags=[self.feed_tag])
             if len(res) > 0:
                 if self.feed == 'online':
@@ -700,7 +722,11 @@ class UrlHausImporter(AbuseChImporter):
                 event_info = "UrlHaus Malware URLs: " + malware_type
                 tags = []
                 info_cred = 'admiralty-scale:information-credibility="2"'
-                event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags, info_cred=info_cred)
+                res = self.misp.search(eventinfo=event_info, tags=[self.mh.get_search_tag('malware:' + malware_type, self.feed_tag)])
+                if len(res) == 1:
+                    event = res[0]
+                else:
+                    event = self.mh.new_misp_event(malware_type, self.feed_tag, event_info, additional_tags=tags, info_cred=info_cred)
                 self.misp_events[malware_type] = self.mh.get_event_id(event)
 
             if self.config['save_url_as'] == 'attribute':
@@ -712,6 +738,7 @@ class UrlHausImporter(AbuseChImporter):
                     self.logger.info(
                         "Max numbers of IOCs per Event reached. Publish Event and create a new Event for further IOCs")
                     self.misp.publish(self.misp_events[malware_type])
+                    self.misp.untag(self.misp_events[malware_type], self.mh.get_search_tag('malware:' + malware_type, self.feed_tag))
                     del self.misp_events[malware_type]
                 self.logger.info("URL added to event")
             elif self.config['save_url_as'] == 'object':
@@ -720,6 +747,9 @@ class UrlHausImporter(AbuseChImporter):
                         "Max numbers of IOCs per Event reached. Publish Event and create a new Event for further IOCs")
                     self.misp.publish(self.misp_events[malware_type])
                     self.logger.info("URL Object added to event " + str(self.misp_events[malware_type]))
+                    self.misp.untag(self.misp_events[malware_type],
+                                    self.mh.get_search_tag('malware:' + malware_type, self.feed_tag))
+
                     del self.misp_events[malware_type]
                 else:
                     self.logger.info("URL Object added to event " + str(self.misp_events[malware_type]))
@@ -734,6 +764,7 @@ class UrlHausImporter(AbuseChImporter):
 
         self.logger.info(str(new_iocs) + ' IOCs imported')
         self.logger.info("Urlhaus import finished")
+        os.remove(self.infile)
 
     def map_object(self, row, evetid):
         malware_info = self.get_malware_info(row)
@@ -820,6 +851,9 @@ class UrlHausImporter(AbuseChImporter):
         return {'mt': malware_tag, 'ft': ft}
 
 
+
+
+
 def init_logger(level):
     logger = logging.getLogger('abusech-to-misp')
 
@@ -856,21 +890,21 @@ if __name__ == '__main__':
     pymisplogger.setLevel('ERROR')
     config = load_config(args.config, logger)
 
-    if 'log_level' in config:
-        logger.setLevel(logging.getLevelName(config['log_level']))
+    #if 'log_level' in config:
+    #    logger.setLevel(logging.getLevelName(config['log_level']))
 
-    bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
-    if not bi.error:
-        bi.import_data()
-    fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
-    if not fi.error:
-        fi.import_data()
-    si = SSLBLImporter(logger, config)
-    if not si.error:
-        si.import_data()
-    si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
-    if not si.error:
-        si.import_data()
+    #bi = BazaarImporter(logger, config, full_import=config['MalwareBazaarImportFull'])
+    #if not bi.error:
+    #    bi.import_data()
+    #fi = FeodoImporter(logger, config, import_agressive=config['FeodoTrackerImportAggressive'])
+    #if not fi.error:
+    #    fi.import_data()
+    #si = SSLBLImporter(logger, config)
+    #if not si.error:
+    #    si.import_data()
+    #si = SSLBLIPImporter(logger, config, import_agressive=config['SSLBlackListImportAggressiveIPs'])
+    #if not si.error:
+    #    si.import_data()
     ui = UrlHausImporter(logger, config, feed=config['UrlHausFeed'])
     if not ui.error:
         ui.import_data()
