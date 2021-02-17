@@ -696,7 +696,7 @@ class UrlHausImporter(AbuseChImporter):
                 continue
             i = i +1
             if i % 100 == 0:
-                print(str(i) + " IOCs processed")
+                print(str(i) + " IOCs processed" + str(datetime.now()))
             res = self.misp.search(controller='attributes', value=row[2].strip().strip('"'), pythonify=True, tags=[self.feed_tag])
             if len(res) > 0:
                 if self.feed == 'online':
